@@ -118,7 +118,10 @@ class InvoiceService
             }
             $totalTagihan = ($hargaPaket + $totalTransport) * $jumlahJamaah;
 
-            $totalBayar = $invoice->pembayaranDiterimas()->sum('jumlah');
+            // Update Pembayaran
+            $invoice->pembayaranDiterimas()->delete();
+            $this->pembayaranService->savePembayarans($invoice->id, $formData['pembayarans']);
+            $totalBayar = collect($formData['pembayarans'])->sum('jumlah');
             $sisaBayar = $totalTagihan - $totalBayar;
 
             // Update Invoice

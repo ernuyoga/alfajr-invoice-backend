@@ -22,10 +22,10 @@ class PDFGeneratorService
         ])->findOrFail($invoice->id);
 
         // Render HTML untuk customer
-        $customerHtml = View::make('pdf.invoice_customer', compact('invoice'))->render();
+        $customerHtml = View::make('invoice_customer', compact('invoice'))->render();
 
         // Render HTML untuk admin
-        $adminHtml = View::make('pdf.invoice_admin', compact('invoice'))->render();
+        $adminHtml = View::make('invoice_admin', compact('invoice'))->render();
 
         // Konfigurasi Dompdf
         $options = new Options();
