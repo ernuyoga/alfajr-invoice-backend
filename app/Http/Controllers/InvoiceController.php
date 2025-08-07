@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use App\Services\InvoiceService;
 use App\Services\HasilService;
 use App\Services\PDFGeneratorService;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Storage;
 
 class InvoiceController extends Controller
@@ -96,7 +95,7 @@ class InvoiceController extends Controller
         // Generate PDF setelah update
         $pdfPaths = $this->pdfGeneratorService->generateInvoicePDFs($invoice);
 
-        // Simpan file_path ke tabel hasilsv
+        // Simpan file_path ke tabel hasils
         foreach (['customer', 'admin'] as $nama) {
             $filePath = $pdfPaths[$nama . '_pdf_path'];
             $hasil = Hasil::where('invoice_id', $invoice->id)->where('nama', $nama)->first();
@@ -137,20 +136,16 @@ class InvoiceController extends Controller
 
     public function downloadPdf(Request $request, $id)
     {
-        $type = $request->query('type', 'customer'); // default ke customer
-        $invoice = $this->invoiceService->getInvoiceById($id);
-        $pdfPaths = $this->pdfGeneratorService->generateInvoicePDFs($invoice);
+        $type = $request->query('type', 'customer');
 
-        if ($type === 'admin') {
-            $pdfPath = $pdfPaths['admin_pdf_path'] ?? null;
-        } else {
-            $pdfPath = $pdfPaths['customer_pdf_path'] ?? null;
+        $hasil = Hasil::where('invoice_id', $id)
+            ->where('nama', $type)
+            ->first();
+
+        if (!$hasil || !$hasil->file_path || !Storage::exists($hasil->file_path)) {
+            return response()->json(['message' => 'PDF not found'], 404);
         }
 
-        if (!$pdfPath || !Storage::exists($pdfPath)) {
-            return response()->json(['message' => 'PDF not found'], Response::HTTP_NOT_FOUND);
-        }
-
-        return response()->download(storage_path('app/' . $pdfPath));
+        return response()->download(Storage::path($hasil->file_path));
     }
 }
