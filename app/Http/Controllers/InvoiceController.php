@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Hasil;
 use Illuminate\Http\Request;
 use App\Services\InvoiceService;
+use App\Services\HasilService;
 use App\Services\PDFGeneratorService;
-use App\Models\Invoice;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Storage;
 
@@ -13,13 +14,16 @@ class InvoiceController extends Controller
 {
     protected $invoiceService;
     protected $pdfGeneratorService;
+    protected $hasilService;
 
     public function __construct(
         InvoiceService $invoiceService,
-        PDFGeneratorService $pdfGeneratorService
+        PDFGeneratorService $pdfGeneratorService,
+        HasilService $hasilService
     ) {
         $this->invoiceService = $invoiceService;
         $this->pdfGeneratorService = $pdfGeneratorService;
+        $this->hasilService = $hasilService;
     }
 
     public function store(Request $request)
@@ -47,6 +51,18 @@ class InvoiceController extends Controller
 
         // Generate PDF setelah invoice dibuat
         $pdfPaths = $this->pdfGeneratorService->generateInvoicePDFs($invoice);
+
+        // Simpan file_path ke tabel hasils
+        $this->hasilService->createHasil([
+            'invoice_id' => $invoice->id,
+            'nama' => 'customer',
+            'file_path' => $pdfPaths['customer_pdf_path'],
+        ]);
+        $this->hasilService->createHasil([
+            'invoice_id' => $invoice->id,
+            'nama' => 'admin',
+            'file_path' => $pdfPaths['admin_pdf_path'],
+        ]);
 
         return response()->json([
             'invoice' => $invoice,
@@ -79,6 +95,21 @@ class InvoiceController extends Controller
 
         // Generate PDF setelah update
         $pdfPaths = $this->pdfGeneratorService->generateInvoicePDFs($invoice);
+
+        // Simpan file_path ke tabel hasilsv
+        foreach (['customer', 'admin'] as $nama) {
+            $filePath = $pdfPaths[$nama . '_pdf_path'];
+            $hasil = Hasil::where('invoice_id', $invoice->id)->where('nama', $nama)->first();
+            if ($hasil) {
+                $hasil->update(['file_path' => $filePath]);
+            } else {
+                $this->hasilService->createHasil([
+                    'invoice_id' => $invoice->id,
+                    'nama' => $nama,
+                    'file_path' => $filePath,
+                ]);
+            }
+        }
 
         return response()->json([
             'invoice' => $invoice,

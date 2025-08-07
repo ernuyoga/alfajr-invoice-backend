@@ -7,6 +7,8 @@ use Dompdf\Options;
 use App\Models\Invoice;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
+
 
 class PDFGeneratorService
 {
@@ -45,9 +47,22 @@ class PDFGeneratorService
         $dompdfAdmin->render();
         $adminPdf = $dompdfAdmin->output();
 
-        // Simpan file PDF ke storage
-        $customerPath = 'invoices/customer/invoice_' . $invoice->kode . '.pdf';
-        $adminPath = 'invoices/admin/invoice_' . $invoice->kode . '.pdf';
+        $awalan = strtoupper($invoice->jamaahs->first()->jamaahMAwalan->nama ?? '');
+        $jamaahTeratas = strtoupper($invoice->jamaahs->first()->nama ?? '');
+        $namaPaket = strtoupper($invoice->paket->nama ?? '');
+        $durasiPaket = strtoupper($invoice->paket->durasi ?? '');
+
+        $bulanIndo = [
+            1 => 'JANUARI', 2 => 'FEBRUARI', 3 => 'MARET', 4 => 'APRIL', 5 => 'MEI', 6 => 'JUNI',
+            7 => 'JULI', 8 => 'AGUSTUS', 9 => 'SEPTEMBER', 10 => 'OKTOBER', 11 => 'NOVEMBER', 12 => 'DESEMBER'
+        ];
+        $carbonTanggal = Carbon::parse($invoice->tanggal);
+        $tanggal = $carbonTanggal->day . ' ' . $bulanIndo[$carbonTanggal->month] . ' ' . $carbonTanggal->year;
+
+        $baseFileName = strtoupper("{$invoice->kode} KWITANSI {$awalan} {$jamaahTeratas} {$namaPaket} {$durasiPaket}H KLOTER {$tanggal}") . '.pdf';
+
+        $customerPath = "invoices/customer/{$baseFileName}";
+        $adminPath = "invoices/admin/{$baseFileName}";
 
         Storage::put($customerPath, $customerPdf);
         Storage::put($adminPath, $adminPdf);

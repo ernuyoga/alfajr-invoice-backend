@@ -2,12 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\Hasil;
 use App\Models\Invoice;
 use App\Services\PaketService;
 use App\Services\JamaahService;
 use App\Services\TransportService;
 use App\Services\PembayaranService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class InvoiceService
 {
@@ -40,10 +42,9 @@ class InvoiceService
                 'harga'    => $formData['paket_harga'],
             ]);
 
-            // 2. Generate kode invoice (format: TRA + 6 digit angka urut)
-            $lastInvoice = Invoice::orderBy('id', 'desc')->first();
-            $lastNumber = $lastInvoice ? intval(substr($lastInvoice->kode, 3)) : 0;
-            $newNumber = $lastNumber + 1;
+            // 2. Generate kode invoice
+            $lastId = Invoice::max('id');
+            $newNumber = $lastId ? $lastId + 1 : 1;
             $kodeInvoice = 'TRA' . str_pad($newNumber, 6, '0', STR_PAD_LEFT);
 
             // 3. Hitung total tagihan
@@ -141,6 +142,15 @@ class InvoiceService
     {
         return DB::transaction(function () use ($invoiceId) {
             $invoice = Invoice::findOrFail($invoiceId);
+
+            // Hapus file PDF di storage dan data di tabel hasils
+            $hasils = Hasil::where('invoice_id', $invoice->id)->get();
+            foreach ($hasils as $hasil) {
+                if ($hasil->file_path && Storage::exists($hasil->file_path)) {
+                    Storage::delete($hasil->file_path);
+                }
+                $hasil->delete();
+            }
 
             // Hapus relasi
             $invoice->jamaahs()->delete();
